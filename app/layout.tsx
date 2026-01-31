@@ -30,7 +30,7 @@ export default function RootLayout({
             <div className="brand">
               <img src="/globe.svg" alt="Brand" width={24} height={24} />
               <div>
-                <div className="brand-title">Hackathon App</div>
+                <div className="brand-title">GeminiLens App</div>
                 <div className="brand-sub">Media → Data powered by Gemini</div>
               </div>
             </div>

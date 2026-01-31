@@ -15,18 +15,7 @@ export default function Home() {
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [autoCropping, setAutoCropping] = useState(false);
   const imgRef = useRef<HTMLImageElement | null>(null);
-  const photoInputRef = useRef<HTMLInputElement | null>(null);
-  const videoInputRef = useRef<HTMLInputElement | null>(null);
   const [isMobileOrTablet, setIsMobileOrTablet] = useState(false);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const [cameraActive, setCameraActive] = useState(false);
-  const [cameraReady, setCameraReady] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [captureMode, setCaptureMode] = useState<"photo" | "video">("photo");
-  const [recording, setRecording] = useState(false);
 
   useEffect(() => {
     const detect = () => {
@@ -119,135 +108,6 @@ export default function Home() {
     setDragging(false);
     const f = e.dataTransfer.files?.[0];
     if (f) setFile(f);
-  };
-
-  const waitForVideoReady = (video: HTMLVideoElement, timeoutMs = 2500) =>
-    new Promise<void>((resolve, reject) => {
-      if (video.videoWidth > 0 && video.videoHeight > 0) return resolve();
-      let done = false;
-      const cleanup = () => {
-        if (done) return; done = true;
-        video.removeEventListener("loadedmetadata", onReady);
-        video.removeEventListener("playing", onReady);
-        video.removeEventListener("canplay", onReady);
-        clearTimeout(to);
-      };
-      const onReady = () => {
-        if (video.videoWidth > 0 && video.videoHeight > 0) { cleanup(); resolve(); }
-      };
-      const to = setTimeout(() => { cleanup(); reject(new Error("timeout")); }, timeoutMs);
-      video.addEventListener("loadedmetadata", onReady);
-      video.addEventListener("playing", onReady);
-      video.addEventListener("canplay", onReady);
-      requestAnimationFrame(function poll() {
-        if (video.videoWidth > 0 && video.videoHeight > 0) { cleanup(); resolve(); return; }
-        requestAnimationFrame(poll);
-      });
-    });
-
-  const startCamera = async (mode: "photo" | "video") => {
-    setCaptureMode(mode);
-    setCameraError(null);
-    setCameraReady(false);
-    try {
-      // If recording requested but MediaRecorder unsupported, fall back to native camcorder
-      if (mode === "video" && typeof window !== "undefined" && !("MediaRecorder" in window)) {
-        videoInputRef.current?.click();
-        return;
-      }
-
-      const constraints: MediaStreamConstraints = {
-        video: { facingMode: { ideal: "environment" } },
-        audio: mode === "video",
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      setCameraActive(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.playsInline = true;
-        videoRef.current.muted = true;
-        await videoRef.current.play().catch(() => {});
-        const onAnyReady = () => {
-          if (videoRef.current && videoRef.current.videoWidth > 0) setCameraReady(true);
-        };
-        videoRef.current.addEventListener("loadedmetadata", onAnyReady, { once: true });
-        videoRef.current.addEventListener("playing", onAnyReady, { once: true });
-        videoRef.current.addEventListener("canplay", onAnyReady, { once: true });
-        onAnyReady();
-      }
-    } catch (e: any) {
-      setCameraError(e?.message || "Unable to access camera");
-    }
-  };
-
-  const stopCamera = () => {
-    if (recording) {
-      try { recorderRef.current?.stop(); } catch {}
-      setRecording(false);
-    }
-    const s = streamRef.current;
-    if (s) {
-      s.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) videoRef.current.srcObject = null;
-    recorderRef.current = null;
-    chunksRef.current = [];
-    setCameraActive(false);
-    setCameraReady(false);
-  };
-
-  const capturePhoto = async () => {
-    setCameraError(null);
-    const video = videoRef.current;
-    if (!video) return;
-    try { await waitForVideoReady(video, 2000); } catch {}
-    const width = video.videoWidth || video.clientWidth || 1280;
-    const height = video.videoHeight || video.clientHeight || 720;
-    const canvas = document.createElement("canvas");
-    canvas.width = width; canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) { setCameraError("Canvas not supported"); return; }
-    ctx.drawImage(video, 0, 0, width, height);
-    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.95));
-    if (!blob) { setCameraError("Failed to capture image"); return; }
-    const ts = new Date().toISOString().replace(/[:.]/g, "-");
-    const captured = new File([blob], `camera_capture_${ts}.jpg`, { type: "image/jpeg" });
-    setFile(captured);
-    stopCamera();
-  };
-
-  const startRecording = () => {
-    setCameraError(null);
-    const s = streamRef.current;
-    if (!s) { setCameraError("No camera stream"); return; }
-    if (!("MediaRecorder" in window)) {
-      videoInputRef.current?.click();
-      return;
-    }
-    try {
-      const rec = new MediaRecorder(s, { mimeType: "video/webm" });
-      recorderRef.current = rec;
-      chunksRef.current = [];
-      rec.ondataavailable = (ev) => { if (ev.data && ev.data.size) chunksRef.current.push(ev.data); };
-      rec.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "video/webm" });
-        const ts = new Date().toISOString().replace(/[:.]/g, "-");
-        const captured = new File([blob], `camera_record_${ts}.webm`, { type: "video/webm" });
-        setFile(captured);
-        stopCamera();
-      };
-      rec.start();
-      setRecording(true);
-    } catch (e: any) {
-      setCameraError(e?.message || "Recording not supported");
-    }
-  };
-
-  const stopRecording = () => {
-    try { recorderRef.current?.stop(); } catch {}
-    setRecording(false);
   };
 
   // Helpers for robust extraction from various shapes
@@ -616,79 +476,10 @@ export default function Home() {
                     />
                     <span className="btn btn-ghost">Browse files</span>
                   </label>
-                  {/* Dedicated native capture inputs/buttons for mobile/tablet only */}
-                  {isMobileOrTablet && (
-                    <>
-                      <input
-                        ref={photoInputRef}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                        style={{ display: "none" }}
-                      />
-                      <input
-                        ref={videoInputRef}
-                        type="file"
-                        accept="video/*"
-                        capture="environment"
-                        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                        style={{ display: "none" }}
-                      />
-                      <button
-                        className="btn btn-ghost"
-                        type="button"
-                        style={{ marginLeft: 8 }}
-                        onClick={() => startCamera("photo")}
-                      >
-                        Take Photo
-                      </button>
-                      <button
-                        className="btn btn-ghost"
-                        type="button"
-                        style={{ marginLeft: 8 }}
-                        onClick={() => startCamera("video")}
-                      >
-                        Record Video
-                      </button>
-                    </>
-                  )}
+                  {/* Camera capture removed per request */}
                 </div>
               </div>
             </div>
-
-            {cameraActive && (
-              <div className="card" style={{ marginTop: 12 }}>
-                <div className="card-body">
-                  <div className="card-title">Camera Preview</div>
-                  {cameraError && (<div className="alert" style={{ marginBottom: 12 }}>Error: {cameraError}</div>)}
-                  <video ref={videoRef} style={{ width: "100%", borderRadius: 12, border: "1px solid var(--border)" }} autoPlay playsInline muted />
-                  <div className="actions" style={{ marginTop: 12 }}>
-                    {captureMode === "photo" ? (
-                      <button className="btn btn-primary" type="button" onClick={capturePhoto}>
-                        {cameraReady ? "Capture Photo" : "Initializing… Capture Anyway"}
-                      </button>
-                    ) : (
-                      <>
-                        {!recording && (
-                          <button className="btn btn-primary" type="button" onClick={startRecording} disabled={!cameraReady && ("MediaRecorder" in window)}>
-                            {cameraReady || !("MediaRecorder" in window) ? "Start Recording" : "Initializing…"}
-                          </button>
-                        )}
-                        {recording && (
-                          <button className="btn btn-primary" type="button" onClick={stopRecording}>
-                            Stop and Save
-                          </button>
-                        )}
-                      </>
-                    )}
-                    <button className="btn btn-ghost" type="button" onClick={stopCamera}>
-                      Close Camera
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
 
 
             {file && (

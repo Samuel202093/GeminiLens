@@ -97,7 +97,7 @@ if (mime.startsWith("image/")) {
 
     const prompt =
       instructions ||
-      "Analyze the attached media and extract structured data you can infer. Return strict JSON with keys: media_type, extracted_items (array of {name, value, confidence}), summary, warnings. Keep values concise.";
+      "Analyze the attached media and extract structured data you can infer. Return strict JSON with keys: media_type, extracted_items (array of {name, value}), summary. Keep values concise.";
 
     const generationConfig = {
       temperature: 0.2,

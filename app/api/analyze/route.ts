@@ -62,7 +62,6 @@ export async function POST(req: Request) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    // const base64 = Buffer.from(arrayBuffer).toString("base64");
     let base64: string;
 
 if (mime.startsWith("image/")) {
@@ -107,8 +106,7 @@ if (mime.startsWith("image/")) {
 
     const parts = [
       { text: prompt },
-      // Gemini public API does not consume arbitrary external URLs directly;
-      // we send inline data for analysis. Cloudinary holds the media temporarily.
+      //  Cloudinary holds the media temporarily.
       { inlineData: { mimeType: mime, data: base64 } },
     ];
 

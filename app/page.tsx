@@ -78,7 +78,7 @@ export default function Home() {
           }
         }
         if (mergedRows.length) {
-          // Prefer the canonical shape that our builder understands
+          // Prefer the canonical shape that the builder understands
           setResult({ extracted_records: mergedRows });
         } else {
           // Fallback to first response if merging failed
@@ -177,13 +177,13 @@ export default function Home() {
   };
 
   const tableFromString = (s: string): PortalTable | null => {
-    // Try JSON first
+    // Trying JSON 
     const parsed = parseJsonSafe(s);
     if (parsed != null) {
       const t = buildTableFromUnknown(parsed);
       if (t) return t;
     }
-    // Try key:value lines
+    // Trying key:value lines
     const lines = s.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
     const kv: Record<string, string> = {};
     let kvCount = 0;
